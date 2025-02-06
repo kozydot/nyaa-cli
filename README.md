@@ -12,6 +12,7 @@ A command-line interface for searching and downloading anime torrents from Nyaa.
 ✨ **Easy to Use**: Simple CLI interface with intuitive commands  
 📥 **Direct Downloads**: Downloads torrent files directly to your machine  
 🔍 **Smart Search**: Filter by subcategory, sort by various criteria  
+🔗 **URL Support**: View and download torrents directly from Nyaa.si URLs  
 📊 **Progress Tracking**: Real-time download progress with speed and ETA  
 📝 **Rich Output**: Clean, formatted search results  
 🔄 **Pagination**: Navigate through large result sets  
@@ -37,6 +38,9 @@ nyaa help
 
 # Search for torrents (defaults to English-translated anime)
 nyaa search "anime name"
+
+# View torrent from Nyaa.si URL
+nyaa view "https://nyaa.si/view/1234567"
 
 # Download:
 # 1. Press 'd'
@@ -81,6 +85,18 @@ nyaa user "username"
 nyaa user "username" --query "anime name" --subcategory "English-translated"
 ```
 
+### View Torrent
+
+```bash
+# View torrent using Nyaa.si URL
+nyaa view "https://nyaa.si/view/1234567"
+
+# View torrent using just the ID
+nyaa view 1234567
+```
+
+The view command shows detailed information about the torrent and offers to download it directly.
+
 ### Navigation
 
 While viewing results:
@@ -112,6 +128,7 @@ Downloads are automatically saved to `downloads/` in your working directory:
 
 Comprehensive error handling for:
 - API connection issues
+- Invalid URLs or IDs
 - Invalid search terms
 - Rate limiting
 - Download failures
