@@ -32,6 +32,5 @@ ENV/
 *.swo
 
 # Project specific
-memory-bank/
 nyaa.si unofficial api.md
 downloads/
