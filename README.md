@@ -134,6 +134,13 @@ pytest
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Credits
+
+This project wouldn't be possible without:
+- [Unofficial Nyaa.si API](https://github.com/Vivek-Kolhe/Nyaa-API) by [Vivek-Kolhe](https://github.com/Vivek-Kolhe)
+  - API Documentation: [nyaaapi.onrender.com/docs](https://nyaaapi.onrender.com/docs)
+  - API Base URL: [nyaaapi.onrender.com](https://nyaaapi.onrender.com/)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
