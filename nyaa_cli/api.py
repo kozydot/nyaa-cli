@@ -14,6 +14,7 @@ class NyaaAPI:
     """Client for interacting with the nyaa.si API."""
     
     BASE_URL = "https://nyaaapi.onrender.com"
+    SUBCATEGORY_ANIME_ENG = "English-translated"
     
     def __init__(self, debug: bool = False):
         """
@@ -53,7 +54,7 @@ class NyaaAPI:
             
             if self.debug and "data" in data:
                 for item in data["data"]:
-                    self.logger.debug(f"Received date: {item.get('date', 'No date')}")
+                    self.logger.debug(f"Received date: {item.get('time', 'No date')}")
                     
             return data
         except RequestException as e:
@@ -65,7 +66,7 @@ class NyaaAPI:
         self,
         query: str,
         category: str = "anime",
-        subcategory: Optional[str] = None,
+        subcategory: Optional[str] = SUBCATEGORY_ANIME_ENG,  # Default to English-translated
         page: int = 1,
         sort: Optional[str] = None,
         order: str = "desc"
@@ -76,7 +77,7 @@ class NyaaAPI:
         Args:
             query: Search query string
             category: Torrent category (default: "anime")
-            subcategory: Optional subcategory
+            subcategory: Optional subcategory (default: "English-translated")
             page: Page number (default: 1)
             sort: Sort field (id, seeders, leechers, size, downloads)
             order: Sort order (asc, desc)
@@ -102,9 +103,9 @@ class NyaaAPI:
         # Parse and standardize dates in the response
         if "data" in response:
             for item in response["data"]:
-                if "date" in item:
+                if "time" in item:
                     if self.debug:
-                        self.logger.debug(f"Processing date: {item['date']}")
+                        self.logger.debug(f"Processing date: {item['time']}")
                     # Keep the date as is, will be formatted by ResultHandler
                     continue
                     
@@ -126,7 +127,8 @@ class NyaaAPI:
         self,
         username: str,
         query: Optional[str] = None,
-        category: Optional[str] = None
+        category: str = "anime",  # Default to anime
+        subcategory: Optional[str] = SUBCATEGORY_ANIME_ENG  # Default to English-translated
     ) -> Dict:
         """
         Search torrents by username.
@@ -134,7 +136,8 @@ class NyaaAPI:
         Args:
             username: Username to search for
             query: Optional search query
-            category: Optional category filter
+            category: Optional category filter (default: "anime")
+            subcategory: Optional subcategory (default: "English-translated")
             
         Returns:
             Dict containing search results
@@ -144,5 +147,7 @@ class NyaaAPI:
             params["q"] = query
         if category:
             params["category"] = category
+        if subcategory:
+            params["subcategory"] = subcategory
             
         return self._make_request(f"nyaa/user/{username}", params)

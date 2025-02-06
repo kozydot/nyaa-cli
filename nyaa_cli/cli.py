@@ -6,6 +6,8 @@ import typer
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt
 from rich.panel import Panel
+from rich.table import Table
+from rich.markdown import Markdown
 
 from .api import NyaaAPI, NyaaAPIError
 from .result_handler import ResultHandler
@@ -13,9 +15,93 @@ from .download_handler import DownloadHandler
 
 app = typer.Typer(help="Nyaa.si CLI - Search for anime torrents")
 console = Console()
-api_client = NyaaAPI(debug=True)  # Enable debug mode
+api_client = NyaaAPI(debug=True)
 result_handler = ResultHandler()
 download_handler = DownloadHandler()
+
+HELP_TEXT = """
+# Nyaa.si CLI Help
+
+A command-line interface for searching and downloading anime torrents from Nyaa.si.
+
+## Commands
+
+### Search
+Search for anime torrents:
+```bash
+nyaa search "your query"
+```
+
+Options:
+- `-s, --subcategory`: Filter by subcategory (default: English-translated)
+  - Available: English-translated, Non-English-translated, Raw
+- `-S, --sort`: Sort results by field
+  - Available: id, seeders, leechers, size, downloads
+- `-o, --order`: Sort order (asc/desc)
+- `-p, --page-size`: Number of results per page
+
+Example:
+```bash
+nyaa search "one piece" -s "English-translated" -S seeders -o desc
+```
+
+### User Search
+Search torrents by username:
+```bash
+nyaa user "username"
+```
+
+Options:
+- `-q, --query`: Optional search term
+- `-s, --subcategory`: Filter by subcategory
+- `-p, --page-size`: Number of results per page
+
+Example:
+```bash
+nyaa user "SubsPlease" -q "one piece" -s "English-translated"
+```
+
+### Torrent Info
+Get detailed information about a specific torrent:
+```bash
+nyaa torrent "torrent_id"
+```
+
+## Navigation Commands
+
+When viewing search results:
+- `n`: Next page
+- `p`: Previous page
+- `d`: Download (you'll be prompted for the number)
+- `q`: Quit/Exit to command prompt
+
+## Download Location
+
+Downloads are saved to the `downloads/` directory in your current working directory.
+
+## Examples
+
+1. Search for recent English anime:
+```bash
+nyaa search "latest" -s "English-translated" -S "id" -o "desc"
+```
+
+2. Search for high-seeded torrents:
+```bash
+nyaa search "anime" -S "seeders" -o "desc"
+```
+
+3. Get details for a specific torrent:
+```bash
+nyaa torrent 1234567
+```
+"""
+
+SUBCATEGORY_CHOICES = [
+    "English-translated",
+    "Non-English-translated",
+    "Raw"
+]
 
 def show_navigation_help():
     """Display navigation help panel."""
@@ -48,16 +134,39 @@ def handle_download_selection(results):
         console.print("[red]Invalid input. Please enter a valid number.[/red]")
 
 @app.command()
+def help():
+    """Show detailed help information."""
+    console.print(Markdown(HELP_TEXT))
+
+@app.command()
 def search(
     query: str = typer.Argument(..., help="Search query"),
-    category: str = typer.Option("anime", help="Torrent category"),
-    subcategory: Optional[str] = typer.Option(None, help="Torrent subcategory"),
+    subcategory: str = typer.Option(
+        api_client.SUBCATEGORY_ANIME_ENG,
+        "--subcategory",
+        "-s",
+        help="Anime subcategory",
+        show_choices=True,
+        case_sensitive=False
+    ),
     sort: Optional[str] = typer.Option(
         None,
+        "--sort",
+        "-S",
         help="Sort results by: id, seeders, leechers, size, downloads"
     ),
-    order: str = typer.Option("desc", help="Sort order: asc or desc"),
-    page_size: int = typer.Option(10, help="Results per page")
+    order: str = typer.Option(
+        "desc",
+        "--order",
+        "-o",
+        help="Sort order: asc or desc"
+    ),
+    page_size: int = typer.Option(
+        10,
+        "--page-size",
+        "-p",
+        help="Results per page"
+    )
 ):
     """
     Search for anime torrents on Nyaa.si
@@ -66,7 +175,6 @@ def search(
         with console.status("[bold green]Searching for torrents..."):
             response = api_client.search_anime(
                 query=query,
-                category=category,
                 subcategory=subcategory,
                 sort=sort,
                 order=order
@@ -81,7 +189,7 @@ def search(
             show_navigation_help()
             command = Prompt.ask(
                 "\nEnter command",
-                choices=["n", "p", "d", "q"],
+                choices=["n", "p", "d", "q", "h"],
                 default="q",
                 show_choices=False,
                 show_default=False
@@ -89,6 +197,8 @@ def search(
             
             if command == "q":
                 break
+            elif command == "h":
+                help()
             elif command == "n":
                 result_handler.next_page()
                 console.clear()
@@ -108,9 +218,26 @@ def search(
 @app.command()
 def user(
     username: str = typer.Argument(..., help="Username to search for"),
-    query: Optional[str] = typer.Option(None, help="Optional search query"),
-    category: Optional[str] = typer.Option(None, help="Optional category filter"),
-    page_size: int = typer.Option(10, help="Results per page")
+    query: Optional[str] = typer.Option(
+        None,
+        "--query",
+        "-q",
+        help="Optional search query"
+    ),
+    subcategory: str = typer.Option(
+        api_client.SUBCATEGORY_ANIME_ENG,
+        "--subcategory",
+        "-s",
+        help="Anime subcategory",
+        show_choices=True,
+        case_sensitive=False
+    ),
+    page_size: int = typer.Option(
+        10,
+        "--page-size",
+        "-p",
+        help="Results per page"
+    )
 ):
     """
     Search for torrents by username
@@ -120,7 +247,7 @@ def user(
             response = api_client.search_by_user(
                 username=username,
                 query=query,
-                category=category
+                subcategory=subcategory
             )
             
         results = result_handler.process_results(response)
@@ -132,7 +259,7 @@ def user(
             show_navigation_help()
             command = Prompt.ask(
                 "\nEnter command",
-                choices=["n", "p", "d", "q"],
+                choices=["n", "p", "d", "q", "h"],
                 default="q",
                 show_choices=False,
                 show_default=False
@@ -140,6 +267,8 @@ def user(
             
             if command == "q":
                 break
+            elif command == "h":
+                help()
             elif command == "n":
                 result_handler.next_page()
                 console.clear()
@@ -173,7 +302,7 @@ def torrent(
             console.print(f"Title: {data.get('title', 'Unknown')}")
             console.print(f"Category: {data.get('category', 'Unknown')}")
             console.print(f"Size: {data.get('size', 'Unknown')}")
-            console.print(f"Date: {data.get('date', 'Unknown')}")
+            console.print(f"Date: {data.get('time', 'Unknown')}")
             console.print(f"Seeders: {data.get('seeders', 0)}")
             console.print(f"Leechers: {data.get('leechers', 0)}")
             console.print(f"Downloads: {data.get('completed', 0)}")

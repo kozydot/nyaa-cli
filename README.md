@@ -11,11 +11,12 @@ A command-line interface for searching and downloading anime torrents from Nyaa.
 
 ✨ **Easy to Use**: Simple CLI interface with intuitive commands  
 📥 **Direct Downloads**: Downloads torrent files directly to your machine  
-🔍 **Smart Search**: Filter by category, sort by various criteria  
+🔍 **Smart Search**: Filter by subcategory, sort by various criteria  
 📊 **Progress Tracking**: Real-time download progress with speed and ETA  
 📝 **Rich Output**: Clean, formatted search results  
 🔄 **Pagination**: Navigate through large result sets  
-👤 **User Search**: Find torrents from specific uploaders
+👤 **User Search**: Find torrents from specific uploaders  
+💡 **Detailed Help**: Comprehensive built-in help system
 
 ## Installation
 
@@ -31,7 +32,10 @@ pip install .
 ## Quick Start
 
 ```bash
-# Search for torrents
+# View detailed help
+nyaa help
+
+# Search for torrents (defaults to English-translated anime)
 nyaa search "anime name"
 
 # Download:
@@ -42,14 +46,23 @@ nyaa search "anime name"
 
 ## Usage
 
+### Help Command
+
+```bash
+# Show comprehensive help
+nyaa help
+
+# During search/user results, press 'h' for help
+```
+
 ### Search Commands
 
 ```bash
-# Basic search
+# Basic search (defaults to English-translated anime)
 nyaa search "anime name"
 
-# Search with filters
-nyaa search "anime name" --category anime --subcategory eng
+# Search with specific subcategory
+nyaa search "anime name" --subcategory "English-translated"
 
 # Sort results
 nyaa search "anime name" --sort seeders --order desc
@@ -61,11 +74,11 @@ nyaa search "anime name" --page-size 15
 ### User Search
 
 ```bash
-# Search by uploader
+# Search by uploader (defaults to English-translated anime)
 nyaa user "username"
 
-# Search user with query
-nyaa user "username" --query "anime name"
+# Search user with query and subcategory
+nyaa user "username" --query "anime name" --subcategory "English-translated"
 ```
 
 ### Navigation
@@ -74,23 +87,15 @@ While viewing results:
 - `n` - Next page
 - `p` - Previous page
 - `d` - Download selected torrent
+- `h` - Show help
 - `q` - Quit
 
-## Categories
+## Subcategories
 
-### Main Categories
-- anime
-- manga
-- audio
-- pictures
-- live_action
-- software
-
-### Anime Subcategories
-- amv
-- eng
-- non-eng
-- raw
+Available anime subcategories:
+- English-translated (default)
+- Non-English-translated
+- Raw
 
 ## File Management
 
