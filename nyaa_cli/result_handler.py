@@ -2,6 +2,7 @@
 Result handler module for processing and displaying search results.
 """
 from typing import Dict, List, Optional, Tuple
+from datetime import datetime
 from dataclasses import dataclass
 from rich.console import Console
 from rich.table import Table
@@ -29,6 +30,24 @@ class ResultHandler:
         self._results_cache = {}
         self._last_query = None
         self._current_page_results: List[TorrentResult] = []
+    
+    def _format_date(self, date_str: str) -> str:
+        """
+        Format the date string from API response.
+        
+        Args:
+            date_str: Raw date string
+            
+        Returns:
+            Formatted date string
+        """
+        try:
+            if 'ago' in date_str.lower():
+                return date_str
+            date = datetime.strptime(date_str, '%Y-%m-%d %H:%M')
+            return date.strftime('%Y-%m-%d %H:%M')
+        except Exception:
+            return 'Unknown'
         
     def process_results(self, api_response: Dict) -> List[TorrentResult]:
         """
@@ -50,7 +69,7 @@ class ResultHandler:
                 leechers=int(item.get("leechers", "0")),
                 downloads=int(item.get("completed", "0")),
                 category=item.get("category", "Unknown"),
-                date=item.get("date", "Unknown")
+                date=self._format_date(item.get("time", "Unknown"))  # Changed from 'date' to 'time'
             )
             results.append(result)
         return results

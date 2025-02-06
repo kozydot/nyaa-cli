@@ -2,6 +2,7 @@
 API client module for interacting with the nyaa.si API.
 """
 from typing import Dict, List, Optional, Union
+import logging
 import requests
 from requests.exceptions import RequestException
 
@@ -14,9 +15,18 @@ class NyaaAPI:
     
     BASE_URL = "https://nyaaapi.onrender.com"
     
-    def __init__(self):
-        """Initialize the API client."""
+    def __init__(self, debug: bool = False):
+        """
+        Initialize the API client.
+        
+        Args:
+            debug: Enable debug logging
+        """
         self.session = requests.Session()
+        self.debug = debug
+        self.logger = logging.getLogger(__name__)
+        if debug:
+            logging.basicConfig(level=logging.DEBUG)
     
     def _make_request(self, endpoint: str, params: Optional[Dict] = None) -> Dict:
         """
@@ -33,12 +43,19 @@ class NyaaAPI:
             NyaaAPIError: If the request fails
         """
         try:
-            response = self.session.get(
-                f"{self.BASE_URL}/{endpoint.lstrip('/')}",
-                params=params
-            )
+            url = f"{self.BASE_URL}/{endpoint.lstrip('/')}"
+            if self.debug:
+                self.logger.debug(f"Making request to: {url} with params: {params}")
+            
+            response = self.session.get(url, params=params)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            
+            if self.debug and "data" in data:
+                for item in data["data"]:
+                    self.logger.debug(f"Received date: {item.get('date', 'No date')}")
+                    
+            return data
         except RequestException as e:
             raise NyaaAPIError(f"API request failed: {str(e)}") from e
         except ValueError as e:
@@ -80,7 +97,18 @@ class NyaaAPI:
         if order:
             params["order"] = order
             
-        return self._make_request("nyaa", params)
+        response = self._make_request("nyaa", params)
+        
+        # Parse and standardize dates in the response
+        if "data" in response:
+            for item in response["data"]:
+                if "date" in item:
+                    if self.debug:
+                        self.logger.debug(f"Processing date: {item['date']}")
+                    # Keep the date as is, will be formatted by ResultHandler
+                    continue
+                    
+        return response
     
     def get_torrent_by_id(self, torrent_id: Union[str, int]) -> Dict:
         """
