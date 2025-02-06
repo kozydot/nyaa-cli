@@ -2,6 +2,7 @@
 CLI interface module for the Nyaa.si torrent search application.
 """
 from typing import Optional
+import re
 import typer
 from rich.console import Console
 from rich.prompt import Prompt, IntPrompt
@@ -15,7 +16,7 @@ from .download_handler import DownloadHandler
 
 app = typer.Typer(help="Nyaa.si CLI - Search for anime torrents")
 console = Console()
-api_client = NyaaAPI(debug=True)
+api_client = NyaaAPI(debug=False)
 result_handler = ResultHandler()
 download_handler = DownloadHandler()
 
@@ -61,7 +62,17 @@ Example:
 nyaa user "SubsPlease" -q "one piece" -s "English-translated"
 ```
 
-### Torrent Info
+### View Torrent
+Get details for a specific torrent using URL or ID:
+```bash
+# Using URL
+nyaa view "https://nyaa.si/view/1931737"
+
+# Using ID
+nyaa view 1931737
+```
+
+### Torrent Info (deprecated, use view instead)
 Get detailed information about a specific torrent:
 ```bash
 nyaa torrent "torrent_id"
@@ -91,9 +102,9 @@ nyaa search "latest" -s "English-translated" -S "id" -o "desc"
 nyaa search "anime" -S "seeders" -o "desc"
 ```
 
-3. Get details for a specific torrent:
+3. View torrent details by URL:
 ```bash
-nyaa torrent 1234567
+nyaa view "https://nyaa.si/view/1931737"
 ```
 """
 
@@ -133,10 +144,126 @@ def handle_download_selection(results):
     except (ValueError, TypeError):
         console.print("[red]Invalid input. Please enter a valid number.[/red]")
 
+def extract_torrent_id(url_or_id: str) -> str:
+    """
+    Extract torrent ID from URL or return the ID if it's just a number.
+    
+    Args:
+        url_or_id: Nyaa.si URL or torrent ID
+        
+    Returns:
+        Torrent ID as string
+        
+    Raises:
+        ValueError: If the URL or ID format is invalid
+    """
+    # If it's a URL, extract the ID
+    url_match = re.match(r'^https?://nyaa\.si/view/(\d+)/?$', url_or_id)
+    if url_match:
+        return url_match.group(1)
+    
+    # If it's just a number, return it
+    if url_or_id.isdigit():
+        return url_or_id
+        
+    raise ValueError(
+        "Invalid format. Please provide either a Nyaa.si URL (https://nyaa.si/view/ID) or just the ID number"
+    )
+
+def display_torrent_info(data: dict) -> None:
+    """Display torrent information in a formatted way."""
+    console.print("\n[bold]Torrent Details:[/bold]")
+    console.print(f"Title: {data.get('title', 'Unknown')}")
+    console.print(f"Category: {data.get('category', 'Unknown')}")
+    console.print(f"Size: {data.get('size', 'Unknown')}")
+    console.print(f"Date: {data.get('time', 'Unknown')}")
+    console.print(f"Seeders: {data.get('seeders', 0)}")
+    console.print(f"Leechers: {data.get('leechers', 0)}")
+    console.print(f"Downloads: {data.get('completed', 0)}")
+
 @app.command()
 def help():
     """Show detailed help information."""
     console.print(Markdown(HELP_TEXT))
+
+@app.command()
+def view(
+    url_or_id: str = typer.Argument(
+        ...,
+        help="Nyaa.si URL (https://nyaa.si/view/ID) or torrent ID"
+    )
+):
+    """
+    View details for a specific torrent using URL or ID
+    """
+    try:
+        torrent_id = extract_torrent_id(url_or_id)
+        
+        with console.status("[bold green]Fetching torrent details..."):
+            response = api_client.get_torrent_by_id(torrent_id)
+            
+        if "data" in response:
+            data = response["data"]
+            display_torrent_info(data)
+            
+            download_link = data.get('torrent')
+            if download_link:
+                if Prompt.ask(
+                    "\nWould you like to download this torrent?",
+                    choices=["y", "n"],
+                    default="n"
+                ) == "y":
+                    download_handler.download_torrent(
+                        download_link,
+                        data.get('title', 'Unknown')
+                    )
+            else:
+                console.print("\n[yellow]Download link not available.[/yellow]")
+        else:
+            console.print("[yellow]No torrent found with that ID.[/yellow]")
+            
+    except ValueError as e:
+        console.print(f"[red]Error:[/red] {str(e)}")
+    except NyaaAPIError as e:
+        console.print(f"[red]Error:[/red] {str(e)}")
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred:[/red] {str(e)}")
+
+@app.command(deprecated=True)
+def torrent(
+    torrent_id: str = typer.Argument(..., help="Torrent ID")
+):
+    """
+    Get details for a specific torrent by ID (deprecated, use view instead)
+    """
+    try:
+        with console.status("[bold green]Fetching torrent details..."):
+            response = api_client.get_torrent_by_id(torrent_id)
+            
+        if "data" in response:
+            data = response["data"]
+            display_torrent_info(data)
+            
+            download_link = data.get('torrent')
+            if download_link:
+                if Prompt.ask(
+                    "\nWould you like to download this torrent?",
+                    choices=["y", "n"],
+                    default="n"
+                ) == "y":
+                    download_handler.download_torrent(
+                        download_link,
+                        data.get('title', 'Unknown')
+                    )
+            else:
+                console.print("\n[yellow]Download link not available.[/yellow]")
+        else:
+            console.print("[yellow]No torrent found with that ID.[/yellow]")
+            
+    except NyaaAPIError as e:
+        console.print(f"[red]Error:[/red] {str(e)}")
+    except Exception as e:
+        console.print(f"[red]An unexpected error occurred:[/red] {str(e)}")
 
 @app.command()
 def search(
@@ -280,49 +407,6 @@ def user(
             elif command == "d":
                 handle_download_selection(results)
                 
-    except NyaaAPIError as e:
-        console.print(f"[red]Error:[/red] {str(e)}")
-    except Exception as e:
-        console.print(f"[red]An unexpected error occurred:[/red] {str(e)}")
-
-@app.command()
-def torrent(
-    torrent_id: str = typer.Argument(..., help="Torrent ID")
-):
-    """
-    Get details for a specific torrent by ID
-    """
-    try:
-        with console.status("[bold green]Fetching torrent details..."):
-            response = api_client.get_torrent_by_id(torrent_id)
-            
-        if "data" in response:
-            data = response["data"]
-            console.print("\n[bold]Torrent Details:[/bold]")
-            console.print(f"Title: {data.get('title', 'Unknown')}")
-            console.print(f"Category: {data.get('category', 'Unknown')}")
-            console.print(f"Size: {data.get('size', 'Unknown')}")
-            console.print(f"Date: {data.get('time', 'Unknown')}")
-            console.print(f"Seeders: {data.get('seeders', 0)}")
-            console.print(f"Leechers: {data.get('leechers', 0)}")
-            console.print(f"Downloads: {data.get('completed', 0)}")
-            
-            download_link = data.get('torrent')
-            if download_link:
-                if Prompt.ask(
-                    "\nWould you like to download this torrent?",
-                    choices=["y", "n"],
-                    default="n"
-                ) == "y":
-                    download_handler.download_torrent(
-                        download_link,
-                        data.get('title', 'Unknown')
-                    )
-            else:
-                console.print("\n[yellow]Download link not available.[/yellow]")
-        else:
-            console.print("[yellow]No torrent found with that ID.[/yellow]")
-            
     except NyaaAPIError as e:
         console.print(f"[red]Error:[/red] {str(e)}")
     except Exception as e:
