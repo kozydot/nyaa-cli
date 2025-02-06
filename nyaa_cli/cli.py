@@ -15,7 +15,7 @@ from .download_handler import DownloadHandler
 
 app = typer.Typer(help="Nyaa.si CLI - Search for anime torrents")
 console = Console()
-api_client = NyaaAPI(debug=True)
+api_client = NyaaAPI(debug=False)
 result_handler = ResultHandler()
 download_handler = DownloadHandler()
 
