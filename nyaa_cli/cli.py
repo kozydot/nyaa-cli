@@ -34,8 +34,8 @@ nyaa search "your query"
 ```
 
 Options:
-- `-s, --subcategory`: Filter by subcategory (default: English-translated)
-  - Available: English-translated, Non-English-translated, Raw
+- `-s, --subcategory`: Filter by subcategory (default: eng)
+  - Available: eng (English), non-eng (Non-English), raw (Raw), amv (Anime Music Video)
 - `-S, --sort`: Sort results by field
   - Available: id, seeders, leechers, size, downloads
 - `-o, --order`: Sort order (asc/desc)
@@ -43,7 +43,7 @@ Options:
 
 Example:
 ```bash
-nyaa search "one piece" -s "English-translated" -S seeders -o desc
+nyaa search "one piece" -s "eng" -S seeders -o desc
 ```
 
 ### User Search
@@ -59,7 +59,7 @@ Options:
 
 Example:
 ```bash
-nyaa user "SubsPlease" -q "one piece" -s "English-translated"
+nyaa user "SubsPlease" -q "one piece" -s "eng"
 ```
 
 ### View Torrent
@@ -94,7 +94,7 @@ Downloads are saved to the `downloads/` directory in your current working direct
 
 1. Search for recent English anime:
 ```bash
-nyaa search "latest" -s "English-translated" -S "id" -o "desc"
+nyaa search "latest" -s "eng" -S "id" -o "desc"
 ```
 
 2. Search for high-seeded torrents:
@@ -108,11 +108,8 @@ nyaa view "https://nyaa.si/view/1931737"
 ```
 """
 
-SUBCATEGORY_CHOICES = [
-    "English-translated",
-    "Non-English-translated",
-    "Raw"
-]
+# Get subcategory choices from API for anime category
+SUBCATEGORY_CHOICES = ["eng", "non-eng", "raw", "amv"]
 
 def show_navigation_help():
     """Display navigation help panel."""
@@ -299,6 +296,9 @@ def search(
     Search for anime torrents on Nyaa.si
     """
     try:
+        console.print("[yellow]Note: The Nyaa API service may be experiencing issues or undergoing maintenance.[/yellow]")
+        console.print("[yellow]If searches fail, please try again later.[/yellow]\n")
+        
         with console.status("[bold green]Searching for torrents..."):
             response = api_client.search_anime(
                 query=query,
