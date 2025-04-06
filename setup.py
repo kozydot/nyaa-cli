@@ -9,12 +9,12 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 setup(
     name="nyaa-cli",
     version="0.1.0",
-    author="Your Name",
-    author_email="your.email@example.com",
+    author="kozydot",
+    author_email="",
     description="A CLI tool for searching anime torrents on Nyaa.si",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/yourusername/nyaa-cli",
+    url="https://github.com/kozydot/nyaa-cli",
     packages=find_packages(),
     classifiers=[
         "Development Status :: 3 - Alpha",

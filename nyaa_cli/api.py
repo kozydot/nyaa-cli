@@ -1,96 +1,45 @@
 """
-API client module for interacting with the nyaa.si API.
+Unofficial API client for scraping nyaa.si directly.
 """
-from typing import Dict, List, Optional, Union
-import logging
 import requests
-from requests.exceptions import RequestException
+from bs4 import BeautifulSoup
+from typing import Dict, Optional, Union
+import logging
 
 class NyaaAPIError(Exception):
     """Base exception for Nyaa API errors."""
     pass
 
 class NyaaAPI:
-    """Client for interacting with the nyaa.si API."""
+    """Client for scraping nyaa.si website."""
     
-    BASE_URL = "https://nyaaapi.onrender.com"
-    SUBCATEGORY_ANIME_ENG = "eng"  # API uses "eng" instead of "English-translated"
+    BASE_URL = "https://nyaa.si"
+    SUBCATEGORY_ANIME_ENG = "eng"  # default subcategory
     
-    # API Categories
-    CATEGORIES = {
-        "anime": "anime",
-        "manga": "manga",
-        "audio": "audio",
-        "pictures": "pictures",
-        "live_action": "live_action",
-        "software": "software"
-    }
-    
-    # API Subcategories
-    SUBCATEGORIES = {
-        "anime": ["amv", "eng", "non-eng", "raw"],
-        "manga": ["eng", "non-eng", "raw"],
-        "audio": ["lossy", "lossless"],
-        "pictures": ["photos", "graphics"],
-        "live_action": ["promo", "eng", "non-eng", "raw"],
-        "software": ["application", "games"]
+    # Category codes for URL parameter 'c'
+    # Format: <main_category>_<sub_category>
+    # 0_0 = all categories
+    # 1_2 = Anime - English-translated
+    # 1_3 = Anime - Non-English
+    # 1_4 = Anime - Raw
+    CATEGORY_CODES = {
+        "all": "0_0",
+        "anime_eng": "1_2",
+        "anime_non_eng": "1_3",
+        "anime_raw": "1_4",
+        "anime_amv": "1_1",
     }
     
     def __init__(self, debug: bool = False):
-        """
-        Initialize the API client.
-        
-        Args:
-            debug: Enable debug logging
-        """
         self.session = requests.Session()
         self.debug = debug
         self.logger = logging.getLogger(__name__)
         if debug:
             logging.basicConfig(level=logging.DEBUG)
     
-    def _make_request(self, endpoint: str) -> Dict:
-        """
-        Make a request to the API.
-        
-        Args:
-            endpoint: API endpoint path with query parameters
-            
-        Returns:
-            Dict containing the API response
-            
-        Raises:
-            NyaaAPIError: If the request fails
-        """
-        try:
-            # First check if API is available
-            try:
-                health_check = self.session.get(self.BASE_URL)
-                health_check.raise_for_status()
-            except RequestException:
-                raise NyaaAPIError("The Nyaa API service is currently unavailable. Please try again later.")
-
-            # Make the actual request
-            url = f"{self.BASE_URL}/{endpoint}"
-            
-            if self.debug:
-                self.logger.debug(f"Making request to: {url}")
-            
-            response = self.session.get(url, timeout=10)  # Add timeout
-            response.raise_for_status()
-            
-            try:
-                data = response.json()
-                if not data:  # If response is empty
-                    return {"data": [], "message": "No results found"}
-                return data
-            except ValueError as e:
-                raise NyaaAPIError("Failed to parse API response") from e
-                
-        except RequestException as e:
-            if "404" in str(e):
-                raise NyaaAPIError("No results found for your search query") from e
-            raise NyaaAPIError(f"API request failed: {str(e)}") from e
+    def _log(self, message: str):
+        if self.debug:
+            self.logger.debug(message)
     
     def search_anime(
         self,
@@ -102,40 +51,139 @@ class NyaaAPI:
     ) -> Dict:
         """
         Search for anime torrents.
-        
-        Args:
-            query: Search query string
-            category: Torrent category (default: "anime")
-            subcategory: Subcategory (default: "eng")
-            sort: Sort field (id, seeders, leechers, size, downloads)
-            order: Sort order (asc, desc)
-            
-        Returns:
-            Dict containing search results
         """
-        from urllib.parse import urlencode
-
-        # Start with just the basic search parameters
-        query_params = {
-            "q": query
-        }
-
-        # Build the endpoint according to API docs
-        endpoint = f"nyaa?{urlencode(query_params)}"
-        return self._make_request(endpoint)
+        try:
+            # Determine category code
+            cat_code = "0_0"  # default all
+            if category == "anime":
+                if subcategory == "eng":
+                    cat_code = self.CATEGORY_CODES["anime_eng"]
+                elif subcategory == "non-eng":
+                    cat_code = self.CATEGORY_CODES["anime_non_eng"]
+                elif subcategory == "raw":
+                    cat_code = self.CATEGORY_CODES["anime_raw"]
+                elif subcategory == "amv":
+                    cat_code = self.CATEGORY_CODES["anime_amv"]
+                else:
+                    cat_code = "1_0"  # all anime
+            
+            params = {
+                "q": query,
+                "c": cat_code,
+                "f": "0"  # no filter
+            }
+            url = f"{self.BASE_URL}/"
+            self._log(f"Search URL: {url} with params {params}")
+            resp = self.session.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            table = soup.find("table", class_="torrent-list")
+            if not table:
+                return {"data": [], "message": "No results found"}
+            results = []
+            for row in table.find("tbody").find_all("tr"):
+                cols = row.find_all("td")
+                title_tag = cols[1].find("a")
+                title = title_tag.text.strip()
+                link = title_tag.get("href", "")
+                torrent_id = None
+                if link:
+                    import re
+                    m = re.search(r'/view/(\d+)', link)
+                    if m:
+                        torrent_id = m.group(1)
+                size = cols[3].text.strip()
+                seeders = cols[5].text.strip()
+                leechers = cols[6].text.strip()
+                completed = cols[7].text.strip()
+                category_name = cols[0].text.strip()
+                date = cols[4].text.strip()
+                download_url = f"{self.BASE_URL}/download/{torrent_id}.torrent" if torrent_id else None
+                results.append({
+                    "id": torrent_id,
+                    "title": title,
+                    "category": category_name,
+                    "size": size,
+                    "time": date,
+                    "seeders": int(seeders),
+                    "leechers": int(leechers),
+                    "completed": int(completed),
+                    "torrent": download_url
+                })
+            return {"data": results}
+        except Exception as e:
+            raise NyaaAPIError(f"Search failed: {str(e)}") from e
     
     def get_torrent_by_id(self, torrent_id: Union[str, int]) -> Dict:
         """
         Get torrent details by ID.
-        
-        Args:
-            torrent_id: Torrent ID
-            
-        Returns:
-            Dict containing torrent details
         """
-        endpoint = f"nyaa/id/{torrent_id}"
-        return self._make_request(endpoint)
+        try:
+            url = f"{self.BASE_URL}/view/{torrent_id}"
+            self._log(f"Fetching torrent page: {url}")
+            resp = self.session.get(url, timeout=10)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            title = soup.find("h3", class_="panel-title").text.strip()
+            description = soup.find("div", class_="panel-body").text.strip()
+            download_url = f"{self.BASE_URL}/download/{torrent_id}.torrent"
+            
+            # Initialize defaults
+            category = "Unknown"
+            size = "Unknown"
+            date = "Unknown"
+            seeders = 0
+            leechers = 0
+            downloads = 0
+            
+            # Parse metadata table
+            info_panel = soup.find("div", class_="panel")
+            if info_panel:
+                rows = info_panel.find_all("tr")
+                for row in rows:
+                    th = row.find("td", class_="text-center")
+                    if not th:
+                        continue
+                    label = th.text.strip().lower()
+                    value_td = th.find_next_sibling("td")
+                    value = value_td.text.strip() if value_td else ""
+                    if "category" in label:
+                        category = value
+                    elif "size" in label:
+                        size = value
+                    elif "date" in label:
+                        date = value
+                    elif "seeders" in label:
+                        try:
+                            seeders = int(value)
+                        except:
+                            seeders = 0
+                    elif "leechers" in label:
+                        try:
+                            leechers = int(value)
+                        except:
+                            leechers = 0
+                    elif "downloads" in label:
+                        try:
+                            downloads = int(value)
+                        except:
+                            downloads = 0
+            
+            data = {
+                "id": str(torrent_id),
+                "title": title,
+                "description": description,
+                "torrent": download_url,
+                "category": category,
+                "size": size,
+                "time": date,
+                "seeders": seeders,
+                "leechers": leechers,
+                "completed": downloads
+            }
+            return {"data": data}
+        except Exception as e:
+            raise NyaaAPIError(f"Failed to fetch torrent info: {str(e)}") from e
     
     def search_by_user(
         self,
@@ -145,28 +193,67 @@ class NyaaAPI:
         subcategory: Optional[str] = SUBCATEGORY_ANIME_ENG
     ) -> Dict:
         """
-        Search torrents by username.
-        
-        Args:
-            username: Username to search for
-            query: Optional search query
-            category: Optional category (default: "anime")
-            subcategory: Optional subcategory (default: "eng")
-            
-        Returns:
-            Dict containing search results
+        Search torrents uploaded by a specific user.
         """
-        # Build endpoint according to API docs
-        base_endpoint = f"nyaa/user/{username}"
-
-        # Add query parameter if provided
-        if query:
-            endpoint = f"{base_endpoint}?q={query}"
-        else:
-            endpoint = base_endpoint
-
-        # Add category if it's anime and has subcategory
-        if category == "anime" and subcategory:
-            endpoint += f"&category={subcategory}" if "?" in endpoint else f"?category={subcategory}"
-
-        return self._make_request(endpoint)
+        try:
+            # User search is done via query param 'u'
+            cat_code = "0_0"
+            if category == "anime":
+                if subcategory == "eng":
+                    cat_code = self.CATEGORY_CODES["anime_eng"]
+                elif subcategory == "non-eng":
+                    cat_code = self.CATEGORY_CODES["anime_non_eng"]
+                elif subcategory == "raw":
+                    cat_code = self.CATEGORY_CODES["anime_raw"]
+                elif subcategory == "amv":
+                    cat_code = self.CATEGORY_CODES["anime_amv"]
+                else:
+                    cat_code = "1_0"
+            params = {
+                "u": username,
+                "c": cat_code,
+                "f": "0"
+            }
+            if query:
+                params["q"] = query
+            url = f"{self.BASE_URL}/"
+            self._log(f"User search URL: {url} with params {params}")
+            resp = self.session.get(url, params=params, timeout=10)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            table = soup.find("table", class_="torrent-list")
+            if not table:
+                return {"data": [], "message": "No results found"}
+            results = []
+            for row in table.find("tbody").find_all("tr"):
+                cols = row.find_all("td")
+                title_tag = cols[1].find("a")
+                title = title_tag.text.strip()
+                link = title_tag.get("href", "")
+                torrent_id = None
+                if link:
+                    import re
+                    m = re.search(r'/view/(\d+)', link)
+                    if m:
+                        torrent_id = m.group(1)
+                size = cols[3].text.strip()
+                seeders = cols[5].text.strip()
+                leechers = cols[6].text.strip()
+                completed = cols[7].text.strip()
+                category_name = cols[0].text.strip()
+                date = cols[4].text.strip()
+                download_url = f"{self.BASE_URL}/download/{torrent_id}.torrent" if torrent_id else None
+                results.append({
+                    "id": torrent_id,
+                    "title": title,
+                    "category": category_name,
+                    "size": size,
+                    "time": date,
+                    "seeders": int(seeders),
+                    "leechers": int(leechers),
+                    "completed": int(completed),
+                    "torrent": download_url
+                })
+            return {"data": results}
+        except Exception as e:
+            raise NyaaAPIError(f"User search failed: {str(e)}") from e

@@ -108,11 +108,9 @@ nyaa view "https://nyaa.si/view/1931737"
 ```
 """
 
-# Get subcategory choices from API for anime category
 SUBCATEGORY_CHOICES = ["eng", "non-eng", "raw", "amv"]
 
 def show_navigation_help():
-    """Display navigation help panel."""
     help_text = (
         "Navigation Commands:\n"
         "  [bold]n[/bold] - Next page\n"
@@ -125,7 +123,6 @@ def show_navigation_help():
     console.print(Panel(help_text, title="Available Commands"))
 
 def handle_download_selection(results):
-    """Handle the download selection process."""
     try:
         selection = IntPrompt.ask(
             "\nEnter the number of the torrent to download (1-10)",
@@ -142,33 +139,16 @@ def handle_download_selection(results):
         console.print("[red]Invalid input. Please enter a valid number.[/red]")
 
 def extract_torrent_id(url_or_id: str) -> str:
-    """
-    Extract torrent ID from URL or return the ID if it's just a number.
-    
-    Args:
-        url_or_id: Nyaa.si URL or torrent ID
-        
-    Returns:
-        Torrent ID as string
-        
-    Raises:
-        ValueError: If the URL or ID format is invalid
-    """
-    # If it's a URL, extract the ID
     url_match = re.match(r'^https?://nyaa\.si/view/(\d+)/?$', url_or_id)
     if url_match:
         return url_match.group(1)
-    
-    # If it's just a number, return it
     if url_or_id.isdigit():
         return url_or_id
-        
     raise ValueError(
         "Invalid format. Please provide either a Nyaa.si URL (https://nyaa.si/view/ID) or just the ID number"
     )
 
 def display_torrent_info(data: dict) -> None:
-    """Display torrent information in a formatted way."""
     console.print("\n[bold]Torrent Details:[/bold]")
     console.print(f"Title: {data.get('title', 'Unknown')}")
     console.print(f"Category: {data.get('category', 'Unknown')}")
@@ -180,7 +160,6 @@ def display_torrent_info(data: dict) -> None:
 
 @app.command()
 def help():
-    """Show detailed help information."""
     console.print(Markdown(HELP_TEXT))
 
 @app.command()
@@ -190,19 +169,13 @@ def view(
         help="Nyaa.si URL (https://nyaa.si/view/ID) or torrent ID"
     )
 ):
-    """
-    View details for a specific torrent using URL or ID
-    """
     try:
         torrent_id = extract_torrent_id(url_or_id)
-        
         with console.status("[bold green]Fetching torrent details..."):
             response = api_client.get_torrent_by_id(torrent_id)
-            
         if "data" in response:
             data = response["data"]
             display_torrent_info(data)
-            
             download_link = data.get('torrent')
             if download_link:
                 if Prompt.ask(
@@ -218,7 +191,6 @@ def view(
                 console.print("\n[yellow]Download link not available.[/yellow]")
         else:
             console.print("[yellow]No torrent found with that ID.[/yellow]")
-            
     except ValueError as e:
         console.print(f"[red]Error:[/red] {str(e)}")
     except NyaaAPIError as e:
@@ -230,17 +202,12 @@ def view(
 def torrent(
     torrent_id: str = typer.Argument(..., help="Torrent ID")
 ):
-    """
-    Get details for a specific torrent by ID (deprecated, use view instead)
-    """
     try:
         with console.status("[bold green]Fetching torrent details..."):
             response = api_client.get_torrent_by_id(torrent_id)
-            
         if "data" in response:
             data = response["data"]
             display_torrent_info(data)
-            
             download_link = data.get('torrent')
             if download_link:
                 if Prompt.ask(
@@ -256,7 +223,6 @@ def torrent(
                 console.print("\n[yellow]Download link not available.[/yellow]")
         else:
             console.print("[yellow]No torrent found with that ID.[/yellow]")
-            
     except NyaaAPIError as e:
         console.print(f"[red]Error:[/red] {str(e)}")
     except Exception as e:
@@ -292,13 +258,7 @@ def search(
         help="Results per page"
     )
 ):
-    """
-    Search for anime torrents on Nyaa.si
-    """
     try:
-        console.print("[yellow]Note: The Nyaa API service may be experiencing issues or undergoing maintenance.[/yellow]")
-        console.print("[yellow]If searches fail, please try again later.[/yellow]\n")
-        
         with console.status("[bold green]Searching for torrents..."):
             response = api_client.search_anime(
                 query=query,
@@ -306,12 +266,10 @@ def search(
                 sort=sort,
                 order=order
             )
-            
         results = result_handler.process_results(response)
         result_handler.cache_results(query, results)
         result_handler.reset_pagination()
         result_handler.display_results(results, page_size)
-        
         while True:
             show_navigation_help()
             command = Prompt.ask(
@@ -321,7 +279,6 @@ def search(
                 show_choices=False,
                 show_default=False
             )
-            
             if command == "q":
                 break
             elif command == "h":
@@ -336,7 +293,6 @@ def search(
                 result_handler.display_results(results, page_size)
             elif command == "d":
                 handle_download_selection(results)
-                
     except NyaaAPIError as e:
         console.print(f"[red]Error:[/red] {str(e)}")
     except Exception as e:
@@ -366,9 +322,6 @@ def user(
         help="Results per page"
     )
 ):
-    """
-    Search for torrents by username
-    """
     try:
         with console.status(f"[bold green]Searching for torrents by {username}..."):
             response = api_client.search_by_user(
@@ -376,12 +329,10 @@ def user(
                 query=query,
                 subcategory=subcategory
             )
-            
         results = result_handler.process_results(response)
         result_handler.cache_results(f"user:{username}", results)
         result_handler.reset_pagination()
         result_handler.display_results(results, page_size)
-        
         while True:
             show_navigation_help()
             command = Prompt.ask(
@@ -391,7 +342,6 @@ def user(
                 show_choices=False,
                 show_default=False
             )
-            
             if command == "q":
                 break
             elif command == "h":
@@ -406,12 +356,10 @@ def user(
                 result_handler.display_results(results, page_size)
             elif command == "d":
                 handle_download_selection(results)
-                
     except NyaaAPIError as e:
         console.print(f"[red]Error:[/red] {str(e)}")
     except Exception as e:
         console.print(f"[red]An unexpected error occurred:[/red] {str(e)}")
 
 def run():
-    """Entry point for the CLI application."""
     app()

@@ -1,6 +1,6 @@
 # Nyaa CLI
 
-A command-line interface for searching and downloading anime torrents from Nyaa.si using their unofficial API.
+A command-line interface for searching and downloading anime torrents from [Nyaa.si](https://nyaa.si) by scraping the website directly.
 
 <p align="center">
 <a href="https://github.com/kozydot/nyaa-cli"><img src="https://img.shields.io/github/license/kozydot/nyaa-cli?style=for-the-badge&color=blue" alt="License"></a>
@@ -18,6 +18,11 @@ A command-line interface for searching and downloading anime torrents from Nyaa.
 🔄 **Pagination**: Navigate through large result sets  
 👤 **User Search**: Find torrents from specific uploaders  
 💡 **Detailed Help**: Comprehensive built-in help system
+
+## How it works
+
+This CLI **scrapes the public HTML pages of [nyaa.si](https://nyaa.si)** to perform searches, retrieve torrent metadata, and download `.torrent` files.  
+It does **not** rely on any third-party API or proxy service.
 
 ## Installation
 
@@ -66,7 +71,7 @@ nyaa help
 nyaa search "anime name"
 
 # Search with specific subcategory
-nyaa search "anime name" --subcategory "English-translated"
+nyaa search "anime name" --subcategory "eng"
 
 # Sort results
 nyaa search "anime name" --sort seeders --order desc
@@ -82,7 +87,7 @@ nyaa search "anime name" --page-size 15
 nyaa user "username"
 
 # Search user with query and subcategory
-nyaa user "username" --query "anime name" --subcategory "English-translated"
+nyaa user "username" --query "anime name" --subcategory "eng"
 ```
 
 ### View Torrent
@@ -109,9 +114,10 @@ While viewing results:
 ## Subcategories
 
 Available anime subcategories:
-- English-translated (default)
-- Non-English-translated
-- Raw
+- eng (English-translated, default)
+- non-eng (Non-English)
+- raw (Raw)
+- amv (Anime Music Video)
 
 ## File Management
 
@@ -126,11 +132,10 @@ Downloads are automatically saved to `downloads/` in your working directory:
 
 ## Error Handling
 
-Comprehensive error handling for:
-- API connection issues
+Handles errors gracefully, including:
+- Network issues
 - Invalid URLs or IDs
 - Invalid search terms
-- Rate limiting
 - Download failures
 - File system errors
 
@@ -138,6 +143,7 @@ Comprehensive error handling for:
 
 - Python 3.8+
 - requests
+- beautifulsoup4
 - rich
 - typer
 - pytest (for development)
@@ -156,20 +162,15 @@ pytest
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## Credits
-
-This project wouldn't be possible without:
-- [Unofficial Nyaa.si API](https://github.com/Vivek-Kolhe/Nyaa-API) by [Vivek-Kolhe](https://github.com/Vivek-Kolhe)
-  - API Documentation: [nyaaapi.onrender.com/docs](https://nyaaapi.onrender.com/docs)
-  - API Base URL: [nyaaapi.onrender.com](https://nyaaapi.onrender.com/)
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Disclaimer
 
-This tool uses the unofficial Nyaa.si API and is not affiliated with Nyaa.si. Use responsibly and in accordance with your local laws and regulations.
+This tool is **unofficial** and **not affiliated** with Nyaa.si.  
+It relies on scraping and may break if the site changes.  
+Use responsibly and in accordance with your local laws and regulations.
 
 ## Author
 
