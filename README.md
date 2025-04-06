@@ -1,6 +1,6 @@
 # Nyaa CLI
 
-Unofficial CLI tool for searching, viewing, and downloading anime torrents from [nyaa.si](https://nyaa.si).
+CLI tool for searching, viewing, and downloading anime torrents from [nyaa.si](https://nyaa.si).
 
 <p align="center">
 <a href="https://github.com/kozydot/nyaa-cli"><img src="https://img.shields.io/github/license/kozydot/nyaa-cli?style=for-the-badge&color=blue" alt="License"></a>
