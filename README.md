@@ -1,4 +1,4 @@
-# Nyaa CLI
+# Nyaa CLI (Obselete, check Korrent1337x instead.)
 
 CLI tool for searching, viewing, and downloading anime torrents from [nyaa.si](https://nyaa.si).
 
